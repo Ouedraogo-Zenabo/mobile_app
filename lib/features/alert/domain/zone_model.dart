@@ -1,0 +1,52 @@
+// zone_model.dart
+class ZoneModel {
+  final String id;
+  final String name;
+  final String code;
+  final String type;
+  final double? latitude;
+  final double? longitude;
+  final int? population;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  ZoneModel({
+    required this.id,
+    required this.name,
+    required this.code,
+    required this.type,
+    this.latitude,
+    this.longitude,
+    this.population,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory ZoneModel.fromMap(Map<String, dynamic> m) {
+    return ZoneModel(
+      id: m['id'] as String,
+      name: m['name'] as String? ?? '',
+      code: m['code'] as String? ?? '',
+      type: m['type'] as String? ?? '',
+      latitude: m['latitude'] != null ? (m['latitude'] as num).toDouble() : null,
+      longitude: m['longitude'] != null ? (m['longitude'] as num).toDouble() : null,
+      population: m['population'] != null ? (m['population'] as num).toInt() : null,
+      createdAt: m['createdAt'] != null ? DateTime.parse(m['createdAt']) : null,
+      updatedAt: m['updatedAt'] != null ? DateTime.parse(m['updatedAt']) : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'code': code,
+      'type': type,
+      'latitude': latitude,
+      'longitude': longitude,
+      'population': population,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+    };
+  }
+}
