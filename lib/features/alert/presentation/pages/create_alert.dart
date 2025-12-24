@@ -22,7 +22,19 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
   bool loading = false;
   bool zonesLoading = false;
   String? errorMessage;
+  String? selectedRegionId;
+  String? selectedProvinceId;
+  String? selectedCommuneId;
 
+  List<Map<String, dynamic>> regions = [];
+ 
+  List<Map<String, dynamic>> filteredProvinces = [];
+  List<Map<String, dynamic>> filteredCommunes = [];
+
+  
+
+
+  
   List zones = [];
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _startTimeController = TextEditingController();
@@ -42,6 +54,7 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
   bool _isRecording = false;
   bool _isPlaying = false;
   Duration _recordDuration = Duration.zero;
+  String? _audioDescriptionError;
 
   // Image (optional)
   Uint8List? selectedImageBytes;
@@ -85,10 +98,28 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
     {"value": "EXTREME", "label": "Extrême"}
   ];
 
+  // Gestion des localisations multiples
+List<Map<String, dynamic>> localisations = [
+  {
+    "region": null,
+    "province": null,
+    "commune": null,
+    "provinces": [],
+    "communes": []
+  }
+];
+
+// Liste pour stocker les régions depuis l'API
+List<Map<String, dynamic>> regionsApi = [];
+
+
   @override
   void initState() {
     super.initState();
     _loadZones();
+   // Charger les régions depuis le backend
+    _loadRegions(); 
+ 
     form["startDate"] = DateTime.now().toIso8601String().split("T")[0];// Date du jour par défaut (format YYYY-MM-DD)
     _startDateController.text = form["startDate"]?.toString() ?? "";
     _setupAudioPlayer();
@@ -219,6 +250,101 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
       });
     }
   }
+
+
+Future<void> _loadRegions() async {
+  try {
+    final token = await _getAccessTokenFromProfile();
+
+    final url = Uri.parse(
+      "http://197.239.116.77:3000/api/v1/zones?type=REGION",
+    );
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    print("Regions status: ${response.statusCode}");
+    print("Regions body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+
+      final List zones = decoded["data"]["zones"];
+
+      setState(() {
+        regions = zones
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      });
+    }
+  } catch (e) {
+    print("❌ Erreur chargement régions: $e");
+  }
+}
+
+
+Future<void> _loadProvincesForLoc(
+  Map<String, dynamic> loc,
+  String regionId,
+) async {
+  final token = await _getAccessTokenFromProfile();
+
+  final url = Uri.parse(
+    "http://197.239.116.77:3000/api/v1/zones?type=PROVINCE",
+  );
+
+  final response = await http.get(
+    url,
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    final decoded = jsonDecode(response.body);
+    final List allProvinces = decoded["data"]["zones"];
+
+    setState(() {
+      loc["provinces"] = allProvinces
+          .where((p) => p["parentId"] == regionId)
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    });
+  }
+}
+
+
+Future<void> _loadCommunesForLoc(
+  Map<String, dynamic> loc,
+  String provinceId,
+) async {
+  final token = await _getAccessTokenFromProfile();
+
+  final url = Uri.parse(
+    "http://197.239.116.77:3000/api/v1/zones?type=COMMUNE",
+  );
+
+  final response = await http.get(
+    url,
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    final decoded = jsonDecode(response.body);
+    final List allCommunes = decoded["data"]["zones"];
+
+    setState(() {
+      loc["communes"] = allCommunes
+          .where((c) => c["parentId"] == provinceId)
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    });
+  }
+}
+
 
     // Audio recording functions
   Future<void> _startRecording() async {
@@ -353,6 +479,8 @@ Future<void> _pickImage(ImageSource source) async {
     print("Form data: $form");
     print("canSubmit value: $canSubmit");
 
+
+
     if (!canSubmit) {
       final titleLen = form["title"].toString().trim().length;
       final messageLen = form["message"].toString().trim().length;
@@ -422,65 +550,103 @@ Future<void> _pickImage(ImageSource source) async {
     }
   }
 
-  // SAVE draft
-  Future<void> _saveDraft() async {
-    print("=== DEBUG: _saveDraft appelé ===");
-    print("Form data: $form");
+                    Future<void> _saveDraft() async {
+  debugPrint("=== SAVE DRAFT ===");
+  debugPrint("Form: $form");
 
+  // 🔴 RÈGLE : description obligatoire si audio existe
+  if (_audioPath != null &&
+      _audioDescriptionController.text.trim().isEmpty) {
     setState(() {
-      loading = true;
-      errorMessage = null;
+      _audioDescriptionError =
+          "Veuillez décrire le contenu de l'enregistrement audio.";
     });
+    return; // ⛔ STOP ici, pas d'appel API
+  } else {
+    _audioDescriptionError = null;
+  }
 
-    final startDateTime = _combineDateTime(form["startDate"] as String?, form["startTime"] as String?);
-    final endDateTime = (form["endDate"] ?? "").toString().isNotEmpty
-        ? _combineDateTime(form["endDate"] as String?, form["endTime"] as String?)
-        : null;
+  setState(() {
+    loading = true;
+    errorMessage = null;
+  });
 
-    final data = {
-      "title": form["title"],
-      "message": form["message"],
-      "type": form["type"],
-      "severity": form["severity"],
-      "zoneId": form["zoneId"],
-      "startDate": startDateTime,
-      "endDate": endDateTime,
-      "instructions": form["instructions"],
-      "actionRequired": form["actionRequired"],
-      "status": "DRAFT",
+  // 🔁 Dates combinées (si présentes)
+  final startDateTime =
+      _combineDateTime(form["startDate"] as String?, form["startTime"] as String?);
+
+  final endDateTime =
+      (form["endDate"] ?? "").toString().isNotEmpty
+          ? _combineDateTime(form["endDate"] as String?, form["endTime"] as String?)
+          : null;
+
+  // 📦 DONNÉES À ENVOYER
+  final data = {
+    "title": form["title"] ?? "",
+    "message": form["message"] ?? "",
+    "type": form["type"],
+    "severity": form["severity"],
+    "zoneId": form["zoneId"],
+    "startDate": startDateTime,
+    "endDate": endDateTime,
+    "instructions": form["instructions"],
+    "actionRequired": form["actionRequired"],
+    "status": "DRAFT",
+
+    // 🎧 Audio (si présent)
+    "audioDescription": _audioDescriptionController.text.trim(),
+  };
+
+  debugPrint("Draft payload: $data");
+
+  final url = Uri.parse("http://197.239.116.77:3000/api/v1/alerts");
+
+  try {
+    final token = await _getAccessTokenFromProfile();
+
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty)
+        'Authorization': 'Bearer $token',
     };
 
-    print("Saving draft with data: $data");
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(data),
+    );
 
-    final url = Uri.parse("http://197.239.116.77:3000/api/v1/alerts");
-    try {
-      final token = await _getAccessTokenFromProfile();
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
+    debugPrint("Draft response ${response.statusCode}");
+    debugPrint(response.body);
 
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: jsonEncode(data),
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("✅ Brouillon enregistré avec succès"),
+          backgroundColor: Colors.green,
+        ),
       );
 
-      print("API Response status: ${response.statusCode}");
-      print("API Response body: ${response.body}");
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        if (mounted) Navigator.pop(context, true);
-      } else {
-        setState(() => errorMessage = "Erreur serveur (${response.statusCode}): ${response.body}");
-      }
-    } catch (e) {
-      print("ERROR: Erreur réseau - $e");
-      setState(() => errorMessage = "Erreur réseau : $e");
-    } finally {
-      if (mounted) setState(() => loading = false);
+      Navigator.pop(context, true);
+    } else {
+      setState(() {
+        errorMessage =
+            "Erreur serveur (${response.statusCode}) : ${response.body}";
+      });
+    }
+  } catch (e) {
+    setState(() {
+      errorMessage = "Erreur réseau : $e";
+    });
+  } finally {
+    if (mounted) {
+      setState(() => loading = false);
     }
   }
+}
+
 
   bool get canSubmit {
     return form["title"].toString().trim().length >= 5 &&
@@ -653,31 +819,139 @@ Future<void> _pickImage(ImageSource source) async {
                         ),
                       ],
                       const SizedBox(height: 16),
-                      // Zone dropdown
-                      if (zonesLoading)
-                        const CircularProgressIndicator()
-                      else if (zones.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          color: Colors.orange[50],
-                          child: const Text("Aucune zone disponible - Vérifiez votre token"),
-                        )
-                      else
-                        DropdownButtonFormField(
-                          decoration: const InputDecoration(
-                            labelText: "Zone géographique *",
-                            border: OutlineInputBorder(),
-                          ),
-                          isExpanded: true,
-                          initialValue: form["zoneId"],
-                          items: zones
-                              .map((z) => DropdownMenuItem(
-                                    value: z["id"],
-                                    child: Text("${z["name"] ?? 'N/A'} (${z["type"] ?? 'N/A'})"),
-                                  ))
-                              .toList(),
-                          onChanged: (v) => setState(() => form["zoneId"] = v ?? ""),
-                        ),
+                      ...List.generate(localisations.length, (index) {
+  final loc = localisations[index];
+  return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // REGION
+          DropdownButtonFormField<Map<String, dynamic>>(
+  decoration: const InputDecoration(
+    labelText: "Région *",
+    border: OutlineInputBorder(),
+  ),
+  value: loc["region"],
+  items: regions.map((r) {
+    return DropdownMenuItem<Map<String, dynamic>>(
+      value: r,
+      child: Text(r["name"]),
+    );
+  }).toList(),
+  onChanged: (val) {
+    setState(() {
+      loc["region"] = val;
+      loc["province"] = null;
+      loc["commune"] = null;
+      loc["provinces"] = [];
+      loc["communes"] = [];
+
+      
+
+        if (val != null) {
+      _loadProvincesForLoc(loc, val["id"]);
+    }
+    });
+  },
+),
+
+          const SizedBox(height: 16),
+
+          // PROVINCE
+         DropdownButtonFormField<Map<String, dynamic>>(
+  decoration: const InputDecoration(
+    labelText: "Province *",
+    border: OutlineInputBorder(),
+  ),
+  value: loc["province"],
+  items: (loc["provinces"] as List)
+    .map<DropdownMenuItem<Map<String, dynamic>>>((p) {
+  return DropdownMenuItem(
+    value: p,
+    child: Text(p["name"]),
+  );
+}).toList(),
+
+  onChanged: loc["region"] == null
+      ? null
+      : (val) {
+          setState(() {
+            loc["province"] = val;
+            loc["commune"] = null;
+            loc["communes"] = [];
+
+            if (val != null) {
+            _loadCommunesForLoc(loc, val["id"]);
+          }
+          });
+        },
+),
+
+          const SizedBox(height: 16),
+
+          // COMMUNE
+          DropdownButtonFormField<Map<String, dynamic>>(
+  decoration: const InputDecoration(
+    labelText: "Commune *",
+    border: OutlineInputBorder(),
+  ),
+  value: loc["commune"],
+ items: (loc["communes"] as List)
+    .map<DropdownMenuItem<Map<String, dynamic>>>((c) {
+  return DropdownMenuItem(
+    value: c,
+    child: Text(c["name"]),
+  );
+}).toList(),
+
+  onChanged: loc["province"] == null
+      ? null
+      : (val) {
+          setState(() {
+            loc["commune"] = val;
+            form["zoneId"] = val?["id"] ?? "";
+          });
+        },
+),
+
+          const SizedBox(height: 16),
+
+          // Supprimer si plusieurs localisations
+          if (localisations.length > 1) ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => setState(() => localisations.removeAt(index)),
+                icon: const Icon(Icons.delete, color: Colors.red),
+                label: const Text("Supprimer", style: TextStyle(color: Colors.red)),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}),
+
+// Ajouter un autre groupe
+SizedBox(
+  width: double.infinity,
+  child: ElevatedButton.icon(
+    icon: const Icon(Icons.add),
+    label: const Text("Ajouter une autre localisation"),
+    onPressed: () => setState(() => localisations.add({
+      "region": null,
+      "province": null,
+      "commune": null,
+      "provinces": [],
+      "communes": []
+    })),
+  ),
+),
+
                       const SizedBox(height: 16),
                       // Period
                       Column(
@@ -961,18 +1235,25 @@ Future<void> _pickImage(ImageSource source) async {
                       //const Text("Image (optionnelle)", style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
 
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.camera_alt),
-                            label: const Text("Caméra"),
-                            onPressed: () => _pickImage(ImageSource.camera),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text("Caméra"),
+                              onPressed: () => _pickImage(ImageSource.camera),
+                            ),
                           ),
-                          const SizedBox(width: 12),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.photo),
-                            label: const Text("Galerie"),
-                            onPressed: () => _pickImage(ImageSource.gallery),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.photo),
+                              label: const Text("Galerie"),
+                              onPressed: () => _pickImage(ImageSource.gallery),
+                            ),
                           ),
                         ],
                       ),
@@ -984,6 +1265,66 @@ Future<void> _pickImage(ImageSource source) async {
                         ),
                     const SizedBox(height: 24),
 
+                    // ================= AUDIO (OPTIONNEL) =================
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Enregistrement audio (optionnel)",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Bouton enregistrer / arrêter
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+                              label: Text(_isRecording ? "Arrêter l'enregistrement" : "Enregistrer un audio"),
+                              onPressed: _isRecording ? _stopRecording : _startRecording,
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                        // Lecture / suppression si audio existe
+                        if (_audioPath != null)
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                                onPressed: _playAudio,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: _deleteAudio,
+                              ),
+                              const Text("Audio enregistré"),
+                            ],
+                          ),
+
+                        const SizedBox(height: 12),
+
+                        // Description audio (OBLIGATOIRE SI AUDIO)
+                        TextField(
+                          controller: _audioDescriptionController,
+                          maxLines: 2,
+                          onChanged: (_) {
+                            if (_audioDescriptionError != null) {
+                              setState(() => _audioDescriptionError = null);
+                            }
+                          },
+                          decoration: InputDecoration(
+                            labelText: "Description de l'enregistrement audio",
+                            hintText: "Décrivez le contenu de l'audio",
+                            border: const OutlineInputBorder(),
+                            errorText: _audioDescriptionError,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
                       // Buttons
                       isMobile
                           ? Column(

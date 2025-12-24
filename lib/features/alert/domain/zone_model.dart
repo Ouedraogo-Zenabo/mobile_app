@@ -7,6 +7,7 @@ class ZoneModel {
   final double? latitude;
   final double? longitude;
   final int? population;
+  final String? parentId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -18,6 +19,7 @@ class ZoneModel {
     this.latitude,
     this.longitude,
     this.population,
+    this.parentId,
     this.createdAt,
     this.updatedAt,
   });
@@ -31,6 +33,7 @@ class ZoneModel {
       latitude: m['latitude'] != null ? (m['latitude'] as num).toDouble() : null,
       longitude: m['longitude'] != null ? (m['longitude'] as num).toDouble() : null,
       population: m['population'] != null ? (m['population'] as num).toInt() : null,
+      parentId: m['parentId'] as String?,
       createdAt: m['createdAt'] != null ? DateTime.parse(m['createdAt']) : null,
       updatedAt: m['updatedAt'] != null ? DateTime.parse(m['updatedAt']) : null,
     );
