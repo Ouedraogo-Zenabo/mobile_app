@@ -48,9 +48,11 @@ class AlertModel {
   // ✅ Nouvel attribut pour stocker les chemins des photos
   List<String>? photos;
 
-  // ============================
-  // Étape 4 : Rapporteur
-  // ============================
+
+
+
+
+///////////////////////////////
   String? rapporteurNom;
   String? rapporteurPrenom;
   String? rapporteurTelephone;
@@ -101,6 +103,9 @@ class AlertModel {
   String? source;
 
   AlertModel({
+
+ 
+
     // Étape 1
     this.region,
     this.province,

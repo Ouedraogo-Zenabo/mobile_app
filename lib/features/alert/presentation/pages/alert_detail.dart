@@ -312,6 +312,7 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> {
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_app/features/alert/presentation/widgets/alert_media_tab.dart';
 import 'package:mobile_app/features/user/data/sources/user_local_service.dart';
 
 class AlertDetailsPage extends StatefulWidget {
@@ -620,47 +621,10 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
                     ),
 
      // =================== Onglet Médias ===================
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Médias", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 12),
-                    if (alertData?['media'] != null && (alertData!['media'] as List).isNotEmpty)
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: (alertData!['media'] as List).length,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemBuilder: (context, index) {
-                          final media = alertData!['media'][index];
-                          if (media['type'] == 'image' && media['url'] != null) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(media['url'], fit: BoxFit.cover),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      )
-                    else
-                      const Text("Aucun média disponible."),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        // TODO: Ajouter la logique pour prendre photo ou choisir depuis galerie
-                      },
-                      icon: const Icon(Icons.add_a_photo),
-                      label: const Text("Ajouter un média"),
-                    ),
-                  ],
-                ),
-              ),
+             
+          const AlertMediaTab(),
+
+
 
               // =================== Onglet Commentaires ===================
               SingleChildScrollView(

@@ -34,8 +34,10 @@ dependencies:
   http: ^1.1.0
   google_maps_flutter: ^2.9.0
   # Exemple pour forcer la dernière version d'un package transitif
+  file_picker: ^8.0.0
+  video_player: ^2.8.2
   
- 
+  
  
   image_picker: ^1.2.1   # vérifie la dernière version sur pub.dev
   shared_preferences: ^2.0.17  # or latest
