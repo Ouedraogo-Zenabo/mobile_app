@@ -869,138 +869,143 @@ Future<void> _pickImage(ImageSource source) async {
                         ),
                       ],
                       const SizedBox(height: 16),
-                      ...List.generate(localisations.length, (index) {
-  final loc = localisations[index];
-  return Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // REGION
-          DropdownButtonFormField<Map<String, dynamic>>(
-  decoration: const InputDecoration(
-    labelText: "Région *",
-    border: OutlineInputBorder(),
-  ),
-  value: loc["region"],
-  items: regions.map((r) {
-    return DropdownMenuItem<Map<String, dynamic>>(
-      value: r,
-      child: Text(r["name"]),
-    );
-  }).toList(),
-  onChanged: (val) {
-    setState(() {
-      loc["region"] = val;
-      loc["province"] = null;
-      loc["commune"] = null;
-      loc["provinces"] = [];
-      loc["communes"] = [];
 
-      
 
-        if (val != null) {
-      _loadProvincesForLoc(loc, val["id"]);
-    }
-    });
-  },
-),
+                    ...List.generate(localisations.length, (index) {
+                          final loc = localisations[index];
 
-          const SizedBox(height: 16),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
 
-          // PROVINCE
-         DropdownButtonFormField<Map<String, dynamic>>(
-  decoration: const InputDecoration(
-    labelText: "Province *",
-    border: OutlineInputBorder(),
-  ),
-  value: loc["province"],
-  items: (loc["provinces"] as List)
-    .map<DropdownMenuItem<Map<String, dynamic>>>((p) {
-  return DropdownMenuItem(
-    value: p,
-    child: Text(p["name"]),
-  );
-}).toList(),
+                              // REGION
+                              DropdownButtonFormField<Map<String, dynamic>>(
+                                decoration: const InputDecoration(
+                                  labelText: "Région *",
+                                  border: OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                ),
+                                value: loc["region"],
+                                isExpanded: true,
+                                items: regions.map((r) {
+                                  return DropdownMenuItem(
+                                    value: r,
+                                    child: Text(r["name"]),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  setState(() {
+                                    loc["region"] = val;
+                                    loc["province"] = null;
+                                    loc["commune"] = null;
+                                    loc["provinces"] = [];
+                                    loc["communes"] = [];
 
-  onChanged: loc["region"] == null
-      ? null
-      : (val) {
-          setState(() {
-            loc["province"] = val;
-            loc["commune"] = null;
-            loc["communes"] = [];
+                                    if (val != null) {
+                                      _loadProvincesForLoc(loc, val["id"]);
+                                    }
+                                  });
+                                },
+                              ),
 
-            if (val != null) {
-            _loadCommunesForLoc(loc, val["id"]);
-          }
-          });
-        },
-),
+                              const SizedBox(height: 16),
 
-          const SizedBox(height: 16),
+                              // PROVINCE
+                              DropdownButtonFormField<Map<String, dynamic>>(
+                                decoration: const InputDecoration(
+                                  labelText: "Province *",
+                                  border: OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                ),
+                                value: loc["province"],
+                                isExpanded: true,
+                                items: (loc["provinces"] as List)
+                                    .map<DropdownMenuItem<Map<String, dynamic>>>((p) {
+                                  return DropdownMenuItem(
+                                    value: p,
+                                    child: Text(p["name"]),
+                                  );
+                                }).toList(),
+                                onChanged: loc["region"] == null
+                                    ? null
+                                    : (val) {
+                                        setState(() {
+                                          loc["province"] = val;
+                                          loc["commune"] = null;
+                                          loc["communes"] = [];
 
-          // COMMUNE
-          DropdownButtonFormField<Map<String, dynamic>>(
-  decoration: const InputDecoration(
-    labelText: "Commune *",
-    border: OutlineInputBorder(),
-  ),
-  value: loc["commune"],
- items: (loc["communes"] as List)
-    .map<DropdownMenuItem<Map<String, dynamic>>>((c) {
-  return DropdownMenuItem(
-    value: c,
-    child: Text(c["name"]),
-  );
-}).toList(),
+                                          if (val != null) {
+                                            _loadCommunesForLoc(loc, val["id"]);
+                                          }
+                                        });
+                                      },
+                              ),
 
-  onChanged: loc["province"] == null
-      ? null
-      : (val) {
-          setState(() {
-            loc["commune"] = val;
-            form["zoneId"] = val?["id"] ?? "";
-          });
-        },
-),
+                              const SizedBox(height: 16),
 
-          const SizedBox(height: 16),
+                              // COMMUNE
+                              DropdownButtonFormField<Map<String, dynamic>>(
+                                decoration: const InputDecoration(
+                                  labelText: "Commune *",
+                                  border: OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                ),
+                                value: loc["commune"],
+                                isExpanded: true,
+                                items: (loc["communes"] as List)
+                                    .map<DropdownMenuItem<Map<String, dynamic>>>((c) {
+                                  return DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c["name"]),
+                                  );
+                                }).toList(),
+                                onChanged: loc["province"] == null
+                                    ? null
+                                    : (val) {
+                                        setState(() {
+                                          loc["commune"] = val;
+                                          form["zoneId"] = val?["id"] ?? "";
+                                        });
+                                      },
+                              ),
 
-          // Supprimer si plusieurs localisations
-          if (localisations.length > 1) ...[
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => setState(() => localisations.removeAt(index)),
-                icon: const Icon(Icons.delete, color: Colors.red),
-                label: const Text("Supprimer", style: TextStyle(color: Colors.red)),
-              ),
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
-}),
+                              const SizedBox(height: 24),
 
-// Ajouter un autre groupe
-SizedBox(
-  width: double.infinity,
-  child: ElevatedButton.icon(
-    icon: const Icon(Icons.add),
-    label: const Text("Ajouter une autre localisation"),
-    onPressed: () => setState(() => localisations.add({
-      "region": null,
-      "province": null,
-      "commune": null,
-      "provinces": [],
-      "communes": []
-    })),
-  ),
-),
+                              if (localisations.length > 1)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: () => setState(() => localisations.removeAt(index)),
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    label: const Text("Supprimer",
+                                        style: TextStyle(color: Colors.red)),
+                                  ),
+                                ),
+
+                              const Divider(height: 32),
+                            ],
+                          );
+                        }),
+
+
+                        // Ajouter un autre groupe
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add),
+                            label: const Text("Ajouter une autre localisation"),
+                            onPressed: () => setState(() => localisations.add({
+                              "region": null,
+                              "province": null,
+                              "commune": null,
+                              "provinces": [],
+                              "communes": []
+                            })),
+                          ),
+                        ),
 
                       const SizedBox(height: 16),
                       // Period
