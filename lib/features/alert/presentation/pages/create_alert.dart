@@ -12,10 +12,19 @@ import 'package:flutter/foundation.dart';
 const bool isWeb = kIsWeb;
 
 class CreateAlertPage extends StatefulWidget {
-  const CreateAlertPage({super.key});
+  //final bool isEditMode;
+  final Map<String, dynamic>? existingAlert;
+
+  const CreateAlertPage({
+    super.key,
+    //this.isEditMode = false,
+    this.existingAlert,
+  });
+
 
   @override
-  _CreateAlertPageState createState() => _CreateAlertPageState();
+  State<CreateAlertPage> createState() => _CreateAlertPageState();
+  
 }
 
 class _CreateAlertPageState extends State<CreateAlertPage> {
@@ -42,6 +51,9 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
   final TextEditingController _endTimeController = TextEditingController();
   final TextEditingController _otherTypeController = TextEditingController();
   final TextEditingController _audioDescriptionController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _instructionsController = TextEditingController();
 
   // Image (optionnelle)
   File? selectedImage;
@@ -113,22 +125,59 @@ List<Map<String, dynamic>> localisations = [
 List<Map<String, dynamic>> regionsApi = [];
 
 
-  @override
-  void initState() {
-    super.initState();
-    _loadZones();
-   // Charger les régions depuis le backend
-    _loadRegions(); 
- 
-    form["startDate"] = DateTime.now().toIso8601String().split("T")[0];// Date du jour par défaut (format YYYY-MM-DD)
-    _startDateController.text = form["startDate"]?.toString() ?? "";
-    _setupAudioPlayer();
-    if (!kIsWeb) {
+ @override
+void initState() {
+  super.initState();
+
+  // =================== Chargements initiaux ===================
+  _loadZones();
+  _loadRegions();
+
+  // =================== AUDIO ===================
+  if (!kIsWeb) {
     _audioRecorder = AudioRecorder();
     _audioPlayer = AudioPlayer();
     _setupAudioPlayer();
   }
+
+ final alert = widget.existingAlert;
+
+if (alert != null) {
+  form["title"] = alert["title"] ?? "";
+  form["message"] = alert["message"] ?? "";
+  form["instructions"] = alert["instructions"] ?? "";
+  form["type"] = alert["type"];
+  form["severity"] = alert["severity"];
+  form["zoneId"] = alert["zone"]?["id"] ?? alert["zoneId"];
+  form["actionRequired"] = alert["actionRequired"] ?? false;
+  _titleController.text = form["title"] as String;
+  _messageController.text = form["message"] as String;
+  _instructionsController.text = form["instructions"] as String;
+
+  if (alert["startDate"] != null) {
+    final start = DateTime.tryParse(alert["startDate"]);
+    if (start != null) {
+      form["startDate"] = start.toIso8601String().split("T")[0];
+      _startDateController.text = form["startDate"]?.toString() ?? "";
+    }
   }
+
+  if (alert["endDate"] != null) {
+    final end = DateTime.tryParse(alert["endDate"]);
+    if (end != null) {
+      form["endDate"] = end.toIso8601String().split("T")[0];
+      _endDateController.text = form["endDate"]?.toString() ?? "";
+    }
+  }
+
+  // 🔥 LIGNE CRUCIALE 🔥
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    setState(() {});
+  });
+}
+
+
+}
 
   void _setupAudioPlayer() {
   if (_audioPlayer == null) return;
@@ -732,6 +781,7 @@ Future<void> _pickImage(ImageSource source) async {
                       ),
                       // Title
                       TextField(
+                        controller: _titleController,
                         decoration: const InputDecoration(
                           labelText: "Titre *",
                           border: OutlineInputBorder(),
@@ -1208,6 +1258,7 @@ SizedBox(
                       const SizedBox(height: 16),
                       // Message
                       TextField(
+                        controller: _messageController,
                         decoration: const InputDecoration(labelText: "Message *", border: OutlineInputBorder()),
                         maxLines: 5,
                         onChanged: (v) => setState(() => form["message"] = v),
@@ -1215,6 +1266,7 @@ SizedBox(
                       const SizedBox(height: 16),
                       // Instructions
                       TextField(
+                        controller: _instructionsController,
                         decoration: const InputDecoration(labelText: "Instructions", border: OutlineInputBorder()),
                         maxLines: 3,
                         onChanged: (v) => setState(() => form["instructions"] = v),

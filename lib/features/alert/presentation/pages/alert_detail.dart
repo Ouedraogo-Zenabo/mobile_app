@@ -312,6 +312,9 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> {
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_app/features/alert/presentation/pages/create_alert.dart';
+
+
 import 'package:mobile_app/features/alert/presentation/widgets/alert_media_tab.dart';
 import 'package:mobile_app/features/user/data/sources/user_local_service.dart';
 
@@ -341,6 +344,31 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
     _tabController.dispose();
     super.dispose();
   }
+
+  /// Vérifie si l'alerte est encore modifiable
+  /// Règle métier : seule une alerte PENDING peut être modifiée
+  bool get _isEditable {
+    final status = (alertData?['status'] ?? '').toString().toUpperCase();
+    return status == 'PENDING';
+  }
+
+
+  /// Navigation vers la page de création en mode édition
+  /// Toutes les données existantes sont transmises
+  void _goToEditAlert() {
+    if (!_isEditable) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CreateAlertPage(
+          //isEditMode: true,
+          existingAlert: alertData!, // données complètes de l’alerte
+        ),
+      ),
+    );
+  }
+
+
 
   // ========================== TOKEN / API ==========================
   Future<String?> _getToken() async {
@@ -616,6 +644,56 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
                               ]),
                             ]),
                           ),
+                          const SizedBox(height: 16),
+
+                          // =================== BOUTONS ACTIONS (Modifier / Annuler) ===================
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isSmallScreen = constraints.maxWidth < 500;
+
+                              return Row(
+                                children: [
+                                  // ===== Bouton Modifier =====
+                                  if (_isEditable)
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        icon: const Icon(Icons.edit),
+                                        label: const Text("Modifier"),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.orange,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                        onPressed: _goToEditAlert,
+                                      ),
+                                    ),
+
+                                  if (_isEditable) const SizedBox(width: 12),
+
+                                  // ===== Bouton Annuler =====
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      icon: const Icon(Icons.close),
+                                      label: const Text("Annuler"),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+
+                          
+
                         ],
                       ),
                     ),
