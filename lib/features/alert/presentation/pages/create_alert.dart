@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:mobile_app/features/user/data/sources/user_local_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
@@ -58,6 +59,8 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
   // Image (optionnelle)
   File? selectedImage;
   final ImagePicker _picker = ImagePicker();
+  
+
   // Audio recording
   AudioRecorder? _audioRecorder;
   AudioPlayer? _audioPlayer;
@@ -513,9 +516,22 @@ Future<void> _pickTime({required bool isStart}) async {
 
 // 📷 Caméra / Galerie
 Future<void> _pickImage(ImageSource source) async {
-  final XFile? image = await _picker.pickImage(source: source, imageQuality: 70);
-  if (image != null) {
-    setState(() => selectedImage = File(image.path));
+  final XFile? image =
+      await _picker.pickImage(source: source, imageQuality: 70);
+
+  if (image == null) return;
+
+  if (kIsWeb) {
+    final bytes = await image.readAsBytes();
+    setState(() {
+      selectedImageBytes = bytes;
+      selectedImage = null;
+    });
+  } else {
+    setState(() {
+      selectedImage = File(image.path);
+      selectedImageBytes = null;
+    });
   }
 }
 
@@ -1315,11 +1331,22 @@ Future<void> _pickImage(ImageSource source) async {
                         ],
                       ),
 
-                      if (selectedImage != null)
+                      if (selectedImageBytes != null || selectedImage != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
-                          child: Image.file(selectedImage!, height: 150),
+                          child: kIsWeb
+                              ? Image.memory(
+                                  selectedImageBytes!,
+                                  height: 150,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image(
+                                  image: FileImage(selectedImage!),
+                                  height: 150,
+                                  fit: BoxFit.cover,
+                                ),
                         ),
+
                     const SizedBox(height: 24),
 
                     // ================= AUDIO (OPTIONNEL) =================

@@ -1,17 +1,14 @@
-
-
-/////////////////////////////////////////////////////////////////////////
-
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
-import '../../domain/zone_model.dart';
 
 /// ============================================================
-/// ONGLET MÉDIAS — VERSION STABLE & FONCTIONNELLE
+/// ONGLET MÉDIAS — VERSION STABLE & WEB SAFE
 /// ============================================================
 
 class AlertMediaTab extends StatefulWidget {
@@ -23,7 +20,6 @@ class AlertMediaTab extends StatefulWidget {
 
 class _AlertMediaTabState extends State<AlertMediaTab>
     with AutomaticKeepAliveClientMixin {
-
   final List<PlatformFile> _medias = [];
 
   @override
@@ -36,7 +32,7 @@ class _AlertMediaTabState extends State<AlertMediaTab>
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.media,
-      withData: kIsWeb,
+      withData: kIsWeb, // OBLIGATOIRE WEB
     );
 
     if (result == null) return;
@@ -49,6 +45,27 @@ class _AlertMediaTabState extends State<AlertMediaTab>
   bool _isVideo(PlatformFile file) {
     final ext = file.extension?.toLowerCase();
     return ['mp4', 'mov', 'avi', 'mkv'].contains(ext);
+  }
+
+  /// ------------------------------------------------------------
+  /// IMAGE PREVIEW SAFE (WEB + MOBILE)
+  /// ------------------------------------------------------------
+  Widget _buildImagePreview(PlatformFile media,
+      {BoxFit fit = BoxFit.cover}) {
+    if (kIsWeb) {
+      if (media.bytes == null) {
+        return const Center(child: Icon(Icons.broken_image));
+      }
+      return Image.memory(
+        media.bytes as Uint8List,
+        fit: fit,
+      );
+    } else {
+      return Image.file(
+        File(media.path!),
+        fit: fit,
+      );
+    }
   }
 
   /// ------------------------------------------------------------
@@ -76,9 +93,7 @@ class _AlertMediaTabState extends State<AlertMediaTab>
                   )
                 : _VideoPlayerDialog(file: File(file.path!))
             : InteractiveViewer(
-                child: kIsWeb
-                    ? Image.memory(file.bytes!)
-                    : Image.file(File(file.path!)),
+                child: _buildImagePreview(file, fit: BoxFit.contain),
               ),
       ),
     );
@@ -90,7 +105,8 @@ class _AlertMediaTabState extends State<AlertMediaTab>
   Future<void> _downloadMedia(PlatformFile file) async {
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Téléchargement non supporté sur Web")),
+        const SnackBar(
+            content: Text("Téléchargement non supporté sur Web")),
       );
       return;
     }
@@ -121,14 +137,14 @@ class _AlertMediaTabState extends State<AlertMediaTab>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           if (_medias.isNotEmpty)
             SizedBox(
               height: 120,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _medias.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: 12),
                 itemBuilder: (_, index) {
                   final media = _medias[index];
 
@@ -138,33 +154,28 @@ class _AlertMediaTabState extends State<AlertMediaTab>
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           width: itemWidth.toDouble(),
-
                           color: Colors.grey.shade300,
                           child: _isVideo(media)
                               ? const Center(
-                                  child: Icon(Icons.play_circle_fill, size: 50),
+                                  child: Icon(
+                                    Icons.play_circle_fill,
+                                    size: 50,
+                                  ),
                                 )
-                              : kIsWeb
-                                  ? Image.memory(
-                                      media.bytes!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.file(
-                                      File(media.path!),
-                                      fit: BoxFit.cover,
-                                    ),
+                              : _buildImagePreview(media),
                         ),
                       ),
-
                       Positioned(
                         top: 4,
                         right: 4,
                         child: PopupMenuButton<_MediaAction>(
-                          icon: const Icon(Icons.more_vert, color: Colors.white),
+                          icon: const Icon(Icons.more_vert,
+                              color: Colors.white),
                           onSelected: (action) {
                             if (action == _MediaAction.view) {
                               _viewMedia(media);
-                            } else if (action == _MediaAction.delete) {
+                            } else if (action ==
+                                _MediaAction.delete) {
                               _removeMedia(index);
                             } else {
                               _downloadMedia(media);
@@ -174,21 +185,24 @@ class _AlertMediaTabState extends State<AlertMediaTab>
                             PopupMenuItem(
                               value: _MediaAction.view,
                               child: ListTile(
-                                leading: Icon(Icons.visibility),
+                                leading:
+                                    Icon(Icons.visibility),
                                 title: Text("Visualiser"),
                               ),
                             ),
                             PopupMenuItem(
                               value: _MediaAction.download,
                               child: ListTile(
-                                leading: Icon(Icons.download),
+                                leading:
+                                    Icon(Icons.download),
                                 title: Text("Télécharger"),
                               ),
                             ),
                             PopupMenuItem(
                               value: _MediaAction.delete,
                               child: ListTile(
-                                leading: Icon(Icons.delete, color: Colors.red),
+                                leading: Icon(Icons.delete,
+                                    color: Colors.red),
                                 title: Text("Supprimer"),
                               ),
                             ),
@@ -205,7 +219,8 @@ class _AlertMediaTabState extends State<AlertMediaTab>
 
           const Text(
             "Ajouter des médias",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            style:
+                TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
 
@@ -213,7 +228,8 @@ class _AlertMediaTabState extends State<AlertMediaTab>
             onTap: _pickMedia,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 32),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 32),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey),
@@ -242,14 +258,15 @@ class _AlertMediaTabState extends State<AlertMediaTab>
 }
 
 /// ============================================================
-/// VIDEO PLAYER DIALOG
+/// VIDEO PLAYER DIALOG (MOBILE ONLY)
 /// ============================================================
 class _VideoPlayerDialog extends StatefulWidget {
   final File file;
   const _VideoPlayerDialog({required this.file});
 
   @override
-  State<_VideoPlayerDialog> createState() => _VideoPlayerDialogState();
+  State<_VideoPlayerDialog> createState() =>
+      _VideoPlayerDialogState();
 }
 
 class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
