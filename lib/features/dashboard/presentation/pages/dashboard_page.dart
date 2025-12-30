@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_app/features/alert/presentation/pages/alert_list_page.dart';
 import 'package:mobile_app/features/alert/presentation/pages/create_alert.dart';
-import 'package:mobile_app/features/alert/presentation/pages/new_alert_step1_page.dart';
-import 'package:mobile_app/features/alert/domain/alert_model.dart';
+
 import 'package:mobile_app/features/user/domain/user_repository.dart';
 import 'package:mobile_app/features/user/presentation/pages/profile_page.dart';
 import 'package:mobile_app/features/user/data/sources/user_local_service.dart';

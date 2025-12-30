@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +11,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
+import 'package:video_player/video_player.dart';
 const bool isWeb = kIsWeb;
 
 class CreateAlertPage extends StatefulWidget {
@@ -41,7 +43,8 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
   List<Map<String, dynamic>> filteredProvinces = [];
   List<Map<String, dynamic>> filteredCommunes = [];
 
-  
+  final List<PlatformFile> _images = [];
+  final List<PlatformFile> _videos = [];
 
 
   
@@ -56,9 +59,6 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _instructionsController = TextEditingController();
 
-  // Image (optionnelle)
-  File? selectedImage;
-  final ImagePicker _picker = ImagePicker();
   
 
   // Audio recording
@@ -71,9 +71,8 @@ class _CreateAlertPageState extends State<CreateAlertPage> {
   Duration _recordDuration = Duration.zero;
   String? _audioDescriptionError;
 
-  // Image (optional)
-  Uint8List? selectedImageBytes;
-  String? selectedImageName;
+ 
+  
   
 
   // FORM DATA
@@ -514,27 +513,65 @@ Future<void> _pickTime({required bool isStart}) async {
   }
 }
 
-// 📷 Caméra / Galerie
-Future<void> _pickImage(ImageSource source) async {
-  final XFile? image =
-      await _picker.pickImage(source: source, imageQuality: 70);
+/// Galerie images (Web + Mobile)
+  Future<void> _pickImages() async {
+  final result = await FilePicker.platform.pickFiles(
+    allowMultiple: true,
+    type: FileType.image,
+    withData: kIsWeb, // 🔥 obligatoire pour Web
+  );
 
-  if (image == null) return;
+  if (result == null) return;
 
-  if (kIsWeb) {
-    final bytes = await image.readAsBytes();
-    setState(() {
-      selectedImageBytes = bytes;
-      selectedImage = null;
-    });
-  } else {
-    setState(() {
-      selectedImage = File(image.path);
-      selectedImageBytes = null;
-    });
-  }
+  setState(() {
+    _images.addAll(result.files);
+  });
 }
 
+
+  /// Caméra (Mobile uniquement)
+  Future<void> _takePhoto() async {
+  if (kIsWeb) {
+    setState(() {
+      errorMessage = "La caméra n'est pas disponible sur le Web";
+    });
+    return;
+  }
+
+  final picker = ImagePicker();
+  final XFile? photo = await picker.pickImage(
+    source: ImageSource.camera,
+    imageQuality: 70,
+  );
+
+  if (photo == null) return;
+
+  setState(() {
+    _images.add(
+      PlatformFile(
+        name: photo.name,
+        path: photo.path,
+        size: 0,
+      ),
+    );
+  });
+}
+
+
+  /// Vidéos (Web + Mobile)
+  Future<void> _pickVideos() async {
+  final result = await FilePicker.platform.pickFiles(
+    allowMultiple: true,
+    type: FileType.video,
+    withData: kIsWeb,
+  );
+
+  if (result == null) return;
+
+  setState(() {
+    _videos.addAll(result.files);
+  });
+}
 
 
 
@@ -1004,7 +1041,7 @@ Future<void> _pickImage(ImageSource source) async {
                               const Divider(height: 32),
                             ],
                           );
-                        }),
+                       }),
 
 
                         // Ajouter un autre groupe
@@ -1314,38 +1351,66 @@ Future<void> _pickImage(ImageSource source) async {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
+                              onPressed: _pickImages,
+                              icon: const Icon(Icons.photo_library),
+                              label: const Text("Ajouter des images (Galerie)"),
+                            ),
+                          ),
+                           const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _takePhoto,
                               icon: const Icon(Icons.camera_alt),
-                              label: const Text("Caméra"),
-                              onPressed: () => _pickImage(ImageSource.camera),
+                              label: const Text("Prendre une photo"),
                             ),
                           ),
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              icon: const Icon(Icons.photo),
-                              label: const Text("Galerie"),
-                              onPressed: () => _pickImage(ImageSource.gallery),
-                            ),
+                                onPressed: _pickVideos,
+                                icon: const Icon(Icons.videocam),
+                                label: const Text("Ajouter des vidéos"),
+                              ),
                           ),
                         ],
                       ),
 
-                      if (selectedImageBytes != null || selectedImage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: kIsWeb
-                              ? Image.memory(
-                                  selectedImageBytes!,
-                                  height: 150,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image(
-                                  image: FileImage(selectedImage!),
-                                  height: 150,
-                                  fit: BoxFit.cover,
-                                ),
+                      if (_images.isNotEmpty)
+                      SizedBox(
+                        height: 120,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _images.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (_, index) => ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              width: 150,
+                              color: Colors.grey.shade300,
+                              child: _buildImagePreview(_images[index]),
+                            ),
+                          ),
                         ),
+                      ),
+
+                      if (_videos.isNotEmpty)
+                      SizedBox(
+                        height: 160,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _videos.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (_, index) => Container(
+                            width: 200,
+                            padding: const EdgeInsets.all(8),
+                            color: Colors.black12,
+                            child: _buildVideoPreview(_videos[index]),
+                          ),
+                        ),
+                      ),
+
 
                     const SizedBox(height: 24),
 
@@ -1466,6 +1531,40 @@ Widget _buildLabel(String text, IconData icon) {
   );
 }
 
+Widget _buildImagePreview(PlatformFile image) {
+  if (kIsWeb) {
+    if (image.bytes == null) {
+      return const Icon(Icons.broken_image);
+    }
+    return Image.memory(image.bytes!, fit: BoxFit.cover);
+  }
+
+  return Image(
+    image: FileImage(File(image.path!)),
+    fit: BoxFit.cover,
+  );
+}
+
+Widget _buildVideoPreview(PlatformFile video) {
+  if (kIsWeb) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.videocam, size: 40),
+        const SizedBox(height: 8),
+        Text(
+          video.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  return _MobileVideoPlayer(file: File(video.path!));
+}
+
+
 Widget _buildTextField({
   required String hintText,
   required TextEditingController controller,
@@ -1481,3 +1580,38 @@ Widget _buildTextField({
   );
 }
 
+class _MobileVideoPlayer extends StatefulWidget {
+  final File file;
+  const _MobileVideoPlayer({required this.file});
+
+  @override
+  State<_MobileVideoPlayer> createState() => _MobileVideoPlayerState();
+}
+
+class _MobileVideoPlayerState extends State<_MobileVideoPlayer> {
+  late VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.file)
+      ..initialize().then((_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_controller.value.isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return AspectRatio(
+      aspectRatio: _controller.value.aspectRatio,
+      child: VideoPlayer(_controller),
+    );
+  }
+}

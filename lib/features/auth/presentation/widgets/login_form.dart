@@ -153,6 +153,7 @@ class _LoginFormState extends State<LoginForm> {
 
   bool _loading = false;
   String? _errorMessage;
+  bool _isPasswordVisible = false;
 
   @override
   void dispose() {
@@ -291,15 +292,29 @@ class _LoginFormState extends State<LoginForm> {
 
                     /// Champ Mot de passe
                     TextFormField(
-                      controller: _passwordCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: "Mot de passe",
-                        border: OutlineInputBorder(),
+                    controller: _passwordCtrl,
+                    obscureText: !_isPasswordVisible,
+                    keyboardType: TextInputType.visiblePassword,
+                    decoration: InputDecoration(
+                      labelText: "Mot de passe",
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? "Champ obligatoire" : null,
                     ),
+                    validator: (value) =>
+                        value!.isEmpty ? "Champ obligatoire" : null,
+                  ),
+
 
                     const SizedBox(height: 24),
 

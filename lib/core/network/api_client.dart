@@ -54,41 +54,43 @@ class ApiClient {
     return response;
   }
 
-static Future<bool> _refreshToken() async {
-  final prefs = await SharedPreferences.getInstance();
+  static Future<bool> _refreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
 
-  // 1️⃣ Vérifier la durée de session
-  final loginTimestamp = prefs.getInt('loginTimestamp');
-  if (loginTimestamp == null) return false;
+    // 1️⃣ Vérifier la durée de session
+    final loginTimestamp = prefs.getInt('loginTimestamp');
+    if (loginTimestamp == null) return false;
 
-  final now = DateTime.now().millisecondsSinceEpoch;
+    final now = DateTime.now().millisecondsSinceEpoch;
 
-  // ⛔ Session trop ancienne → refus du refresh
-  if (now - loginTimestamp > maxSessionDurationMs) {
-    await prefs.remove('accessToken');
-    await prefs.remove('refreshToken');
-    await prefs.remove('loginTimestamp');
+    // ⛔ Session trop ancienne → refus du refresh
+    if (now - loginTimestamp > maxSessionDurationMs) {
+      await prefs.remove('accessToken');
+      await prefs.remove('refreshToken');
+      await prefs.remove('loginTimestamp');
+      return false;
+    }
+
+    // 2️⃣ Continuer normalement si session encore valide
+    final refreshToken = prefs.getString('refreshToken');
+    if (refreshToken == null) return false;
+
+    final response = await http.post(
+      Uri.parse("$baseUrl/auth/refresh"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refreshToken': refreshToken}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body)['data'];
+      await prefs.setString('accessToken', data['accessToken']);
+      await prefs.setString('refreshToken', data['refreshToken']);
+      return true;
+    }
+
     return false;
   }
-
-  // 2️⃣ Continuer normalement si session encore valide
-  final refreshToken = prefs.getString('refreshToken');
-  if (refreshToken == null) return false;
-
-  final response = await http.post(
-    Uri.parse("$baseUrl/auth/refresh"),
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({'refreshToken': refreshToken}),
-  );
-
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body)['data'];
-    await prefs.setString('accessToken', data['accessToken']);
-    await prefs.setString('refreshToken', data['refreshToken']);
-    return true;
-  }
-
-  return false;
 }
 
-}
+// Durée maximale d'une session en millisecondes (1 heure)
+const int maxSessionDurationMs = 3600000; // 1 heure
