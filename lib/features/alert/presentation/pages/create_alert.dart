@@ -515,26 +515,47 @@ Future<void> _pickTime({required bool isStart}) async {
 
 /// Galerie images (Web + Mobile)
   Future<void> _pickImages() async {
-  final result = await FilePicker.platform.pickFiles(
-    allowMultiple: true,
-    type: FileType.image,
-    withData: kIsWeb, // 🔥 obligatoire pour Web
-  );
+  if (kIsWeb) {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.image,
+      withData: true,
+    );
 
-  if (result == null) return;
+    if (result != null) {
+      setState(() => _images.addAll(result.files));
+    }
+    return;
+  }
+
+  final picker = ImagePicker();
+  final images = await picker.pickMultiImage(imageQuality: 70);
+
+  if (images.isEmpty) return;
 
   setState(() {
-    _images.addAll(result.files);
+    _images.addAll(
+      images.map((img) => PlatformFile(
+        name: img.name,
+        path: img.path,
+        size: 0,
+      )),
+    );
   });
 }
+
 
 
   /// Caméra (Mobile uniquement)
   Future<void> _takePhoto() async {
   if (kIsWeb) {
-    setState(() {
-      errorMessage = "La caméra n'est pas disponible sur le Web";
-    });
+    setState(() => errorMessage = "Caméra indisponible sur le Web");
+    return;
+  }
+
+  final status = await Permission.camera.request();
+  if (!status.isGranted) {
+    setState(() => errorMessage = "Permission caméra refusée");
     return;
   }
 
@@ -556,6 +577,7 @@ Future<void> _pickTime({required bool isStart}) async {
     );
   });
 }
+
 
 
   /// Vidéos (Web + Mobile)
@@ -1418,11 +1440,8 @@ Future<void> _pickTime({required bool isStart}) async {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Enregistrement audio (optionnel)",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
+                         
+                          
 
                           // Bouton enregistrer / arrêter
                           SizedBox(

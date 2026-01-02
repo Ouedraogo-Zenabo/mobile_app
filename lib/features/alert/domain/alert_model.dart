@@ -27,7 +27,7 @@ class AlertModel {
   // ============================
   // Étape 2 : Événement
   // ============================
-  String? typeEvenement;
+ 
   List<String>? facteursDeclencheurs;
   double? ampleur;
   String? periode;
@@ -123,7 +123,7 @@ class AlertModel {
     this.zoneId,
 
     // Étape 2
-    this.typeEvenement,
+    
     this.facteursDeclencheurs,
     this.ampleur,
     this.periode,
@@ -190,7 +190,7 @@ class AlertModel {
       'village': village,
       'date': date,
       'time': time,
-      'typeEvenement': typeEvenement,
+     
       'facteursDeclencheurs': facteursDeclencheurs,
       'ampleur': ampleur,
       'periode': periode,
@@ -250,7 +250,7 @@ class AlertModel {
       'commune': commune,
       'zone': zone,
       'coordonnees': coordonnees,
-      'typeEvenement': typeEvenement,
+      
       'facteursDeclencheurs': facteursDeclencheurs,
       'ampleur': ampleur,
       'periode': periode,
@@ -297,7 +297,7 @@ class AlertModel {
       commune: map['commune'],
       zone: map['zone'],
       coordonnees: map['coordonnees'],
-      typeEvenement: map['typeEvenement'],
+    
       facteursDeclencheurs: List<String>.from(map['facteursDeclencheurs'] ?? []),
       ampleur: (map['ampleur'] ?? 0).toDouble(),
       periode: map['periode'],

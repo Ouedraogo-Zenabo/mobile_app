@@ -258,7 +258,7 @@ class _LoginFormState extends State<LoginForm> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Image.network(
-                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQv0QnySrg0ZxVu2txgj5_n6CbzAusWVdH_VA&s',
+                        'https://meteoburkina.bf/media/images/burkina-logo-01.original.png',
                         width: isTablet ? 150 : 110,
                         height: isTablet ? 150 : 110,
                         fit: BoxFit.contain,

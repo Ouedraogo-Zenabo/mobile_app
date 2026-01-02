@@ -33,11 +33,16 @@ android {
     }
 
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug")
-        }
+    getByName("release") {
+        isMinifyEnabled = false
+        isShrinkResources = false
+        isDebuggable = false
+        signingConfig = signingConfigs.getByName("debug")
     }
 }
+
+}
+
 
 tasks.withType<JavaCompile> {
     options.compilerArgs.add("-Xlint:-options")
