@@ -38,9 +38,12 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
   /// Vérifie si l'alerte est encore modifiable
   /// Règle métier : seule une alerte PENDING peut être modifiée
   bool get _isEditable {
-    final status = (alertData?['status'] ?? '').toString().toUpperCase();
-    return status == 'PENDING';
-  }
+  final status = (alertData?['status'] ?? '').toString().toUpperCase();
+
+  const editableStatuses = {'PENDING', 'BROUILLON'};
+  return editableStatuses.contains(status);
+}
+
 
 
   /// Navigation vers la page de création en mode édition
