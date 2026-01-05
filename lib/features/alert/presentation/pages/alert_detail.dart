@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_app/features/alert/presentation/pages/create_alert.dart';
@@ -21,7 +22,7 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
   String? error;
   Map<String, dynamic>? alertData;
   late TabController _tabController;
-
+  
   @override
   void initState() {
     super.initState();
@@ -40,7 +41,7 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
   bool get _isEditable {
   final status = (alertData?['status'] ?? '').toString().toUpperCase();
 
-  const editableStatuses = {'PENDING', 'BROUILLON'};
+  const editableStatuses = {'PENDING', 'BROUILLON', 'REJECTED'};
   return editableStatuses.contains(status);
 }
 
@@ -181,6 +182,21 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
     ]);
   }
 
+ 
+  List<PlatformFile> _buildMediaFiles(List<dynamic>? medias) {
+  if (medias == null) return [];
+
+  return medias.map((media) {
+    return PlatformFile(
+      name: media['name'] ?? 'media',
+      size: 0,
+      path: media['url'], // URL backend
+    );
+  }).toList();
+}
+
+ 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -212,6 +228,7 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
               : TabBarView(
                   controller: _tabController,
                   children: [
+                    
                     // =================== Onglet Détails complets ===================
                     SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
@@ -393,8 +410,11 @@ class _AlertDetailsPageState extends State<AlertDetailsPage> with SingleTickerPr
 
      // =================== Onglet Médias ===================
              
-          const AlertMediaTab(),
-
+          
+    AlertMediaTab(
+      initialMedias: _buildMediaFiles(alertData?['medias']),
+      canEdit: alertData?['status'] == 'BROUILLON',
+    ),
 
 
               // =================== Onglet Commentaires ===================

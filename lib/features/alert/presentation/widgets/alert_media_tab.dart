@@ -12,7 +12,14 @@ import 'package:path_provider/path_provider.dart';
 /// ============================================================
 
 class AlertMediaTab extends StatefulWidget {
-  const AlertMediaTab({super.key});
+  final List<PlatformFile>? initialMedias;
+  final bool canEdit; // 👈 IMPORTANT
+  const AlertMediaTab({
+    super.key,
+    this.initialMedias,
+    this.canEdit = true,
+  });
+
 
   @override
   State<AlertMediaTab> createState() => _AlertMediaTabState();
@@ -21,31 +28,56 @@ class AlertMediaTab extends StatefulWidget {
 class _AlertMediaTabState extends State<AlertMediaTab>
     with AutomaticKeepAliveClientMixin {
   final List<PlatformFile> _medias = [];
+  List<PlatformFile> get newMedias =>
+    _medias.where((m) => !_isRemoteMedia(m)).toList();
+
+  List<String> get existingMediaUrls =>
+    _medias
+        .where(_isRemoteMedia)
+        .map((m) => m.path!)
+        .toList();
+
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialMedias != null) {
+      _medias.addAll(widget.initialMedias!);
+    }
+  }
 
   /// ------------------------------------------------------------
   /// PICK MEDIA
   /// ------------------------------------------------------------
   Future<void> _pickMedia() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      type: FileType.media,
-      withData: kIsWeb, // OBLIGATOIRE WEB
-    );
+  if (!widget.canEdit) return;
 
-    if (result == null) return;
+  final result = await FilePicker.platform.pickFiles(
+    allowMultiple: true,
+    type: FileType.media,
+    withData: kIsWeb,
+  );
 
-    setState(() {
-      _medias.addAll(result.files);
-    });
-  }
+  if (result == null) return;
+
+  setState(() {
+    _medias.addAll(result.files);
+  });
+}
+
 
   bool _isVideo(PlatformFile file) {
     final ext = file.extension?.toLowerCase();
     return ['mp4', 'mov', 'avi', 'mkv'].contains(ext);
   }
+
+  bool _isRemoteMedia(PlatformFile file) {
+  return file.path != null && file.path!.startsWith('http');
+}
+
 
   /// ------------------------------------------------------------
   /// IMAGE PREVIEW SAFE (WEB + MOBILE)
@@ -181,15 +213,14 @@ class _AlertMediaTabState extends State<AlertMediaTab>
                               _downloadMedia(media);
                             }
                           },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: _MediaAction.view,
-                              child: ListTile(
-                                leading:
-                                    Icon(Icons.visibility),
-                                title: Text("Visualiser"),
-                              ),
+                          itemBuilder: (_) => [
+                          const PopupMenuItem(
+                            value: _MediaAction.view,
+                            child: ListTile(
+                              leading: Icon(Icons.visibility),
+                              title: Text("Visualiser"),
                             ),
+                          ),
                             PopupMenuItem(
                               value: _MediaAction.download,
                               child: ListTile(
@@ -198,14 +229,14 @@ class _AlertMediaTabState extends State<AlertMediaTab>
                                 title: Text("Télécharger"),
                               ),
                             ),
-                            PopupMenuItem(
-                              value: _MediaAction.delete,
-                              child: ListTile(
-                                leading: Icon(Icons.delete,
-                                    color: Colors.red),
-                                title: Text("Supprimer"),
+                            if (!_isRemoteMedia(media))
+                              const PopupMenuItem(
+                                value: _MediaAction.delete,
+                                child: ListTile(
+                                  leading: Icon(Icons.delete, color: Colors.red),
+                                  title: Text("Supprimer"),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -215,12 +246,15 @@ class _AlertMediaTabState extends State<AlertMediaTab>
               ),
             ),
 
+          if (widget.canEdit) ...[
           const SizedBox(height: 24),
 
           const Text(
             "Ajouter des médias",
-            style:
-                TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
 
@@ -228,8 +262,7 @@ class _AlertMediaTabState extends State<AlertMediaTab>
             onTap: _pickMedia,
             child: Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 32),
+              padding: const EdgeInsets.symmetric(vertical: 32),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey),
@@ -251,6 +284,8 @@ class _AlertMediaTabState extends State<AlertMediaTab>
               ),
             ),
           ),
+        ],
+
         ],
       ),
     );
